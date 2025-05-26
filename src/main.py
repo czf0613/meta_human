@@ -14,7 +14,7 @@ if __name__ == "__main__":
     ac: AudioCapture | None = None
 
     try:
-        vc = VideoCapture(fps=30.0)
+        vc = VideoCapture()
         width, height = vc.width, vc.height
 
         ac = AudioCapture()

@@ -27,7 +27,7 @@ class VideoCapture(Thread):
 
         return 1 / (current_time - last_time)
 
-    def __init__(self, fps: float):
+    def __init__(self):
         super().__init__(daemon=True)
 
         self.__cap = cv2.VideoCapture(0)
