@@ -6,3 +6,6 @@ pyvenv.cfg
 __pycache__/
 .DS_Store
 cache/
+Scripts/
+output_videos/
+Lib/
