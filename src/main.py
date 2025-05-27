@@ -1,142 +1,126 @@
 import os
 import shutil
-import time
-import queue
-import cv2
-import ffmpeg
-import numpy as np
 from video_capture import VideoCapture
 from audio_capture import AudioCapture
+import cv2
+import queue
+import av
+import numpy as np
 
-class MP4Encoder:
-    def __init__(self, output_path, width, height, fps, sample_rate, channels):
-        self.output_path = output_path
-        self.width = width
-        self.height = height
-        self.fps = fps
-        self.sample_rate = sample_rate
-        self.channels = channels
-        
-        # 初始化FFmpeg进程
-        self.process = (
-            ffmpeg
-            .input('pipe:', format='rawvideo', pix_fmt='bgr24', 
-                  s=f'{width}x{height}', r=fps)
-            .output(
-                ffmpeg.input('pipe:', format='s16le', ac=channels, ar=sample_rate),
-                output_path,
-                pix_fmt='yuv420p',
-                vcodec='libx264',
-                acodec='aac',
-                preset='fast',
-                crf=23,
-                movflags='faststart'
-            )
-            .overwrite_output()
-            .run_async(pipe_stdin=True, pipe_stdout=True, pipe_stderr=True)
-        )
-        
-    def write_frame(self, video_frame, audio_frame=None):
-        # 写入视频帧
-        self.process.stdin.write(
-            video_frame
-            .astype(np.uint8)
-            .tobytes()
-        )
-        
-        # 写入音频帧（如果有）
-        if audio_frame is not None:
-            self.process.stdin.write(audio_frame.tobytes())
+class PyAVEncoder:
+    def __init__(self, width:int, height:int, sample_rate:int, channels:int=1, current_fps:float=30.0):
+        self.container = av.open("cache/output.mp4", mode="w")
+        self.video_stream = self.container.add_stream("h264", rate=current_fps)
+        self.video_stream.width = width
+        self.video_stream.height = height
+        self.video_stream.pix_fmt = "yuv420p"
+        self.video_stream.options = {"preset": "ultrafast", "crf": "23"}
+
+        self.audio_stream = self.container.add_stream("aac", rate=sample_rate)
+        self.audio_stream.channels = channels
+        self.audio_stream.sample_rate = sample_rate
+        self.audio_stream.format = "s16"
+
+
+        self.video_pts = 0
+        self.audio_pts = 0
+        self.video_stream.time_base = av.Rational(1, current_fps)
+
     
+    def write_video_frame(self, bgr_frame:np.ndarray):
+        yuv_frame = av.VideoFrame.from_ndarray(bgr_frame, format="bgr24")
+        yuv_frame.pts = self.video_pts
+        self.video_pts += int(1/self.video_stream.time_base*90000)
+        self.encode_video(yuv_frame)
+        return yuv_frame
+
+
+    def write_audio_frame(self, pcm_chunk:bytes):
+        if isinstance(pcm_chunk, bytes):
+            pcm_chunk = np.frombuffer(pcm_chunk, dtype=np.int16)
+        elif isinstance(pcm_chunk, np.ndarray) and pcm_chunk.dtype != np.int16:
+            pcm_chunk = pcm_chunk.astype(np.int16)
+        audio_frame = av.AudioFrame.from_ndarray(pcm_chunk.reshape(-1,1), format="s16", layout="mono")
+        audio_frame.pts = self.audio_pts
+        self.audio_pts += len(pcm_chunk) // 2 
+        self.encode_audio(audio_frame)
+        return audio_frame
+
     def close(self):
-        self.process.stdin.close()
-        self.process.wait()
+        for packet in self.video_stream.encode():
+            self.container.mux(packet)
+
+        for packet in self.audio_stream.encode():
+            self.container.mux(packet)
+
+        self.container.close()
+
 
 if __name__ == "__main__":
-    # 清理并创建缓存目录
     shutil.rmtree("cache", ignore_errors=True)
     os.makedirs("cache", exist_ok=True)
-    
-    output_path = "output.mp4"
-    vc = None
-    ac = None
-    encoder = None
+
+    vc: VideoCapture | None = None
+    ac: AudioCapture | None = None
 
     try:
-        # 初始化捕获设备
         vc = VideoCapture()
-        ac = AudioCapture()
-        
-        # 获取参数
         width, height = vc.width, vc.height
+
+        ac = AudioCapture()
         sample_rate, channels = AudioCapture.SAMPLE_RATE, 1
-        
-        # 估算帧率（初始值，实际会动态调整）
-        estimated_fps = 30  
-        encoder = MP4Encoder(output_path, width, height, 
-                           estimated_fps, sample_rate, channels)
-        
+
         vc.start()
         ac.start()
-        
-        print(f'\nPress "q" to stop recording and save to {output_path}\n')
 
-        last_frame_time = time.time()
-        frame_times = []
-        
+        print(f'{os.linesep}Press "q" to on window stop the video capture.{os.linesep}')
+
         while True:
-            # 获取视频帧
             video_pack = vc.frame_queue.get()
             video_frame, video_pts = video_pack.frame, video_pack.pts
-            
-            # 尝试获取音频帧
-            audio_pack = None
+
             try:
-                audio_pack = ac.frame_queue.get_nowait()
+                audio_pack = ac.frame_queue.get(block=False)
+                audio_frame, audio_pts = (
+                    audio_pack.pcm_chunk,
+                    audio_pack.pts,
+                )
             except queue.Empty:
-                pass
-                
-            # 计算实际帧率（动态调整）
-            current_time = time.time()
-            frame_times.append(current_time)
-            if len(frame_times) > 10:
-                frame_times.pop(0)
-                actual_fps = len(frame_times) / (frame_times[-1] - frame_times[0])
-                
-            # 添加调试信息到视频帧
+                print("no active voice detected")
+
             cv2.putText(
                 video_frame,
-                f"FPS: {vc.current_fps:.1f} | PTS: {video_pts}",
+                f"FPS: {vc.current_fps:.1f}  PTS: {video_pts}",
                 (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
+                1,
                 (0, 255, 0),
                 2,
             )
-            
-            # 编码帧
-            encoder.write_frame(
-                video_frame,
-                audio_pack.pcm_chunk if audio_pack else None
-            )
-            
-            # 显示预览
-            cv2.imshow("Recording...", video_frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
+
+            cv2.imshow("Camera Capture", video_frame)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
-                
+
     except KeyboardInterrupt:
         pass
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"An error occurred: {e}")
     finally:
-        # 清理资源
         if vc is not None:
             vc.stop()
+
         if ac is not None:
-            ac.stop()
-        if encoder is not None:
-            encoder.close()
-        cv2.destroyAllWindows()
-        
-        print(f"\nRecording saved to {output_path}")
+            ac.stop()       
+
+encoder= PyAVEncoder(
+    output_path="output.mp4",
+    video_width=vc.width,
+    video_height=vc.height,
+    sample_rate=AudioCapture.SAMPLE_RATE,
+    current_fps=30.0)   
+
+encoder.write_video_frame(video_frame)
+if audio_pack:
+    encoder.write_audio_frame(audio_pack.pcm_chunk)
+encoder.close()       

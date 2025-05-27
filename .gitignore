@@ -9,3 +9,4 @@ cache/
 Scripts/
 output_videos/
 Lib/
+*.mp4
