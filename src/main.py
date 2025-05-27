@@ -8,43 +8,43 @@ import av
 import numpy as np
 
 class PyAVEncoder:
-    def __init__(self, width:int, height:int, sample_rate:int, channels:int=1, current_fps:float=30.0):
-        self.container = av.open("cache/output.mp4", mode="w")
-        self.video_stream = self.container.add_stream("h264", rate=current_fps)
+    def __init__(self, output_path:str, width:int, height:int, sample_rate:int, channels:int=1, current_fps:float=30.0):
+        output_path = "output.mp4"
+        self.container = av.open(output_path, mode="w")
+        self.video_stream = self.container.add_stream("h264", rate=30)
         self.video_stream.width = width
         self.video_stream.height = height
         self.video_stream.pix_fmt = "yuv420p"
         self.video_stream.options = {"preset": "ultrafast", "crf": "23"}
 
         self.audio_stream = self.container.add_stream("aac", rate=sample_rate)
-        self.audio_stream.channels = channels
         self.audio_stream.sample_rate = sample_rate
         self.audio_stream.format = "s16"
 
 
         self.video_pts = 0
         self.audio_pts = 0
-        self.video_stream.time_base = av.Rational(1, current_fps)
+        self.video_frame_duration = 1.0/current_fps
 
     
     def write_video_frame(self, bgr_frame:np.ndarray):
         yuv_frame = av.VideoFrame.from_ndarray(bgr_frame, format="bgr24")
         yuv_frame.pts = self.video_pts
-        self.video_pts += int(1/self.video_stream.time_base*90000)
-        self.encode_video(yuv_frame)
+        self.video_pts += int(1.0/self.video_frame_duration*90000)
+        for packet in self.video_stream.encode(yuv_frame):
+            self.container.mux(packet)
         return yuv_frame
 
 
     def write_audio_frame(self, pcm_chunk:bytes):
-        if isinstance(pcm_chunk, bytes):
-            pcm_chunk = np.frombuffer(pcm_chunk, dtype=np.int16)
-        elif isinstance(pcm_chunk, np.ndarray) and pcm_chunk.dtype != np.int16:
-            pcm_chunk = pcm_chunk.astype(np.int16)
-        audio_frame = av.AudioFrame.from_ndarray(pcm_chunk.reshape(-1,1), format="s16", layout="mono")
+        audio_array = np.frombuffer(pcm_chunk, dtype=np.int16)
+        audio_frame = av.AudioFrame.from_ndarray(audio_array.reshape(1,-1), format="s16", layout="mono")
         audio_frame.pts = self.audio_pts
-        self.audio_pts += len(pcm_chunk) // 2 
-        self.encode_audio(audio_frame)
+        self.audio_pts += len(audio_array) 
+        for packet in self.audio_stream.encode(audio_frame):
+            self.container.mux(packet)
         return audio_frame
+        
 
     def close(self):
         for packet in self.video_stream.encode():
@@ -70,6 +70,14 @@ if __name__ == "__main__":
         ac = AudioCapture()
         sample_rate, channels = AudioCapture.SAMPLE_RATE, 1
 
+        encoder= PyAVEncoder(
+    output_path="output.mp4",
+    width=vc.width,
+    height=vc.height,
+    sample_rate=AudioCapture.SAMPLE_RATE,
+    channels=1,
+    current_fps=30.0)   
+
         vc.start()
         ac.start()
 
@@ -78,9 +86,11 @@ if __name__ == "__main__":
         while True:
             video_pack = vc.frame_queue.get()
             video_frame, video_pts = video_pack.frame, video_pack.pts
+            encoder.write_video_frame(video_frame)
 
             try:
                 audio_pack = ac.frame_queue.get(block=False)
+                encoder.write_audio_frame(audio_pack.pcm_chunk)
                 audio_frame, audio_pts = (
                     audio_pack.pcm_chunk,
                     audio_pack.pts,
@@ -112,15 +122,3 @@ if __name__ == "__main__":
 
         if ac is not None:
             ac.stop()       
-
-encoder= PyAVEncoder(
-    output_path="output.mp4",
-    video_width=vc.width,
-    video_height=vc.height,
-    sample_rate=AudioCapture.SAMPLE_RATE,
-    current_fps=30.0)   
-
-encoder.write_video_frame(video_frame)
-if audio_pack:
-    encoder.write_audio_frame(audio_pack.pcm_chunk)
-encoder.close()       
