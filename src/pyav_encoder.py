@@ -4,7 +4,7 @@ from fractions import Fraction
 import cv2
 
 class PyAVEncoder:
-    def __init__(self, output_path:str, width:int, height:int, sample_rate:int, channels:int, current_fps:float=30.0):
+    def __init__(self, output_path:str, width:int, height:int, sample_rate:int,current_fps:float=30.0):
         output_path = "output.mp4"
         self.container = av.open(output_path, mode="w")
         self.video_stream = self.container.add_stream("h264", rate=30)
@@ -16,7 +16,8 @@ class PyAVEncoder:
 
         self.audio_stream = self.container.add_stream("aac", rate=sample_rate)
         self.audio_stream.format = "fltp"
-        self.audio_stream.layout = "stereo"
+        self.audio_stream.layout = "mono"
+        self.audio_stream.time_base = Fraction(1, sample_rate)
         self.audio_pts = 0
 
     def write_video_frame(self, bgr_frame:cv2.typing.MatLike,pts:int):
@@ -29,11 +30,9 @@ class PyAVEncoder:
 
     def write_audio_frame(self, pcm_chunk:bytes, pts:int):
         audio_array = np.frombuffer(pcm_chunk, dtype=np.int16).astype(np.float32) / 32768.0
-        audio_frame = av.AudioFrame.from_ndarray(audio_array.reshape(2,-1), format="fltp", layout="stereo")
+        audio_frame = av.AudioFrame.from_ndarray(audio_array.reshape(1,-1), format="fltp", layout="mono")
         audio_frame.pts = pts
         audio_frame.sample_rate = self.audio_stream.rate
-        audio_frame.time_base = Fraction(1, self.audio_stream.rate) 
-        self.audio_pts += len(audio_array) 
         for packet in self.audio_stream.encode(audio_frame):
             self.container.mux(packet)
         

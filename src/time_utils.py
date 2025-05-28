@@ -1,10 +1,11 @@
 import time
+# from audio_capture import AudioCapture
 
 # 时间基
 VIDEO_TIME_BASE = 1 / 90000
 
 
-start_time1 = None
+start_time1, start_time2 = None, None
 
 def gen_video_pts() -> int:
     global start_time1
@@ -15,10 +16,11 @@ def gen_video_pts() -> int:
 
 
 samples_generated = 0
+AUDIO_TIME_BASE = 1 / 16000
 
-def gen_audio_pts(num_samples:int) -> int:
-    global samples_generated
-    pts= samples_generated
-    samples_generated += num_samples
-    return pts
+def gen_audio_pts() -> int:
+    global start_time2
+    if start_time2 is None:
+        start_time2 = time.time()
+    return int((time.time() - start_time2) / AUDIO_TIME_BASE)
 

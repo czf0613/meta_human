@@ -20,14 +20,13 @@ if __name__ == "__main__":
         width, height = vc.width, vc.height
 
         ac = AudioCapture()
-        sample_rate, channels = AudioCapture.SAMPLE_RATE, 1
+        sample_rate = AudioCapture.SAMPLE_RATE
 
         encoder= PyAVEncoder(
     output_path="output.mp4",
     width=vc.width,
     height=vc.height,
     sample_rate=AudioCapture.SAMPLE_RATE,
-    channels=1,
     current_fps=30.0)
 
         
@@ -39,7 +38,7 @@ if __name__ == "__main__":
         while True:
             video_pack = vc.frame_queue.get()
             video_frame, video_pts = video_pack.frame, video_pack.pts
-            encoder.write_video_frame(video_frame,video_pts)
+            encoder.write_video_frame(video_frame, video_pts)
 
             try:
                 audio_pack = ac.frame_queue.get(block=False)

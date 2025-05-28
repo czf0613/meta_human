@@ -58,7 +58,7 @@ class AudioCapture(Thread):
 
             try:             
                 self.frame_queue.put(
-                    CurrentAudioFrameChunk(chunk, gen_audio_pts(AudioCapture.SAMPLE_COUNT)),
+                    CurrentAudioFrameChunk(chunk, gen_audio_pts()),
                     block=False,
                 )
             except queue.Full:
