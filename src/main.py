@@ -3,6 +3,7 @@ import shutil
 from video_capture import VideoCapture
 from audio_capture import AudioCapture
 from pyav_encoder import PyAVEncoder
+import consts
 import cv2
 import queue
 
@@ -20,13 +21,13 @@ if __name__ == "__main__":
         width, height = vc.width, vc.height
 
         ac = AudioCapture()
-        sample_rate = AudioCapture.SAMPLE_RATE
+        sample_rate = consts.SAMPLE_RATE
 
         encoder = PyAVEncoder(
             output_path="output.mp4",
             width=vc.width,
             height=vc.height,
-            sample_rate=AudioCapture.SAMPLE_RATE,
+            sample_rate=consts.SAMPLE_RATE,
             current_fps=30.0)
 
         
@@ -46,15 +47,15 @@ if __name__ == "__main__":
             except queue.Empty:
                 print("no active voice detected")
 
-            cv2.putText(
-                video_frame,
-                f"FPS: {vc.current_fps:.1f}  PTS: {video_pts}",
-                (10, 30),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (0, 255, 0),
-                2,
-            )
+            # cv2.putText(
+            #     video_frame,
+            #     f"FPS: {vc.current_fps:.1f}  PTS: {video_pts}",
+            #     (10, 30),
+            #     cv2.FONT_HERSHEY_SIMPLEX,
+            #     1,
+            #     (0, 255, 0),
+            #     2,
+            # )
 
             cv2.imshow("Camera Capture", video_frame)
             if cv2.waitKey(1) & 0xFF == ord("q"):

@@ -5,6 +5,7 @@ import time
 from dataclasses import dataclass
 from time_utils import gen_audio_pts
 import webrtcvad
+import consts
 
 
 @dataclass
@@ -20,14 +21,7 @@ class AudioCapture(Thread):
     frame_queue: queue.Queue[CurrentAudioFrameChunk]
     vad: webrtcvad.Vad
 
-    # 采样率
-    SAMPLE_RATE = 16000
-    # 每个chunk的持续时间ms
-    CHUNK_DURATION = 30
-    # 每一个chunk里面包含多少个采样数据
-    SAMPLE_COUNT = SAMPLE_RATE // 1000 * CHUNK_DURATION
-    VAD_LEVEL = 1
-
+    
     def __init__(self):
         super().__init__(daemon=True)
 
@@ -35,26 +29,26 @@ class AudioCapture(Thread):
         self.__stream = self.__audio.open(
             format=pyaudio.paInt16,
             channels=1,
-            rate=AudioCapture.SAMPLE_RATE,
+            rate=consts.SAMPLE_RATE,
             input=True,
-            frames_per_buffer=AudioCapture.SAMPLE_COUNT,
+            frames_per_buffer=consts.SAMPLE_COUNT,
         )
 
         self.__working = True
         self.frame_queue = queue.Queue(maxsize=128)
-        self.vad = webrtcvad.Vad(AudioCapture.VAD_LEVEL)
+        self.vad = webrtcvad.Vad(consts.VAD_LEVEL)
 
     def run(self):
         print("Audio capture started...")
 
         while self.__working:
             chunk = self.__stream.read(
-                AudioCapture.SAMPLE_COUNT, exception_on_overflow=False
+                consts.SAMPLE_COUNT, exception_on_overflow=False
             )
 
             # 语音活跃检测
-            if not self.vad.is_speech(chunk, AudioCapture.SAMPLE_RATE):
-                continue
+            # if not self.vad.is_speech(chunk, consts.SAMPLE_RATE):
+            #     continue
 
             try:             
                 self.frame_queue.put(

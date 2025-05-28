@@ -2,14 +2,16 @@ import av
 import numpy as np
 from fractions import Fraction
 import cv2
+from threading import Thread
 
-class PyAVEncoder:
+class PyAVEncoder():
     def __init__(self, output_path:str, width:int, height:int, sample_rate:int,current_fps:float=30.0):
+        # super().__init__(daemon=True)
         output_path = "output.mp4"
         self.container = av.open(output_path, mode="w")
         self.video_stream = self.container.add_stream("h264", rate=30)
-        self.video_stream.width = width
-        self.video_stream.height = height
+        self.video_stream.width = 1920
+        self.video_stream.height = 1080
         self.video_stream.pix_fmt = "yuv420p"
         self.video_stream.options = {"preset": "ultrafast", "crf": "23"}
         self.video_stream.time_base = Fraction(1, 90000)
@@ -21,7 +23,6 @@ class PyAVEncoder:
         self.audio_pts = 0
 
     def write_video_frame(self, bgr_frame:cv2.typing.MatLike,pts:int):
-        
         yuv_frame = av.VideoFrame.from_ndarray(bgr_frame, format="bgr24")
         yuv_frame.pts = pts
         for packet in self.video_stream.encode(yuv_frame):
