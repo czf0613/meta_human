@@ -10,8 +10,8 @@ class PyAVEncoder():
         output_path = "output.mp4"
         self.container = av.open(output_path, mode="w")
         self.video_stream = self.container.add_stream("h264", rate=30)
-        self.video_stream.width = 1920
-        self.video_stream.height = 1080
+        self.video_stream.width = width
+        self.video_stream.height = height
         self.video_stream.pix_fmt = "yuv420p"
         self.video_stream.options = {"preset": "ultrafast", "crf": "23"}
         self.video_stream.time_base = Fraction(1, 90000)

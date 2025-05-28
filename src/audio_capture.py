@@ -46,7 +46,7 @@ class AudioCapture(Thread):
                 consts.SAMPLE_COUNT, exception_on_overflow=False
             )
 
-            # 语音活跃检测
+            #语音活跃检测
             # if not self.vad.is_speech(chunk, consts.SAMPLE_RATE):
             #     continue
 

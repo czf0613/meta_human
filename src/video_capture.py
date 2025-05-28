@@ -31,17 +31,13 @@ class VideoCapture(Thread):
         super().__init__(daemon=True)
 
         self.__cap = cv2.VideoCapture(0)
-   
-
         if not self.__cap.isOpened():
             raise Exception("Could not open front camera.")
 
         self.width = int(self.__cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.height = int(self.__cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        print(f"Front camera resolution: {self.width}x{self.height}")
         self.current_fps = 0.0
         print(f"Video capture started. Width: {self.width}, Height: {self.height}")
-
         self.__working = True
         self.frame_queue = queue.Queue(maxsize=256)
 
