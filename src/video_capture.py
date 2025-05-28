@@ -3,7 +3,7 @@ import cv2
 import time
 from dataclasses import dataclass
 import queue
-from time_utils import gen_pts
+from time_utils import gen_video_pts
 
 
 @dataclass
@@ -57,7 +57,7 @@ class VideoCapture(Thread):
 
             try:
                 self.frame_queue.put(
-                    CurrentVideoFrame(frame, gen_pts()),
+                    CurrentVideoFrame(frame, gen_video_pts()),
                     block=False,
                 )
             except queue.Full:

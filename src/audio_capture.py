@@ -3,7 +3,7 @@ import pyaudio
 import queue
 import time
 from dataclasses import dataclass
-from time_utils import gen_pts
+from time_utils import gen_audio_pts
 import webrtcvad
 
 
@@ -56,9 +56,9 @@ class AudioCapture(Thread):
             if not self.vad.is_speech(chunk, AudioCapture.SAMPLE_RATE):
                 continue
 
-            try:
+            try:             
                 self.frame_queue.put(
-                    CurrentAudioFrameChunk(chunk, gen_pts()),
+                    CurrentAudioFrameChunk(chunk, gen_audio_pts(AudioCapture.SAMPLE_COUNT)),
                     block=False,
                 )
             except queue.Full:
