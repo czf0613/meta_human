@@ -22,12 +22,12 @@ if __name__ == "__main__":
         ac = AudioCapture()
         sample_rate = AudioCapture.SAMPLE_RATE
 
-        encoder= PyAVEncoder(
-    output_path="output.mp4",
-    width=vc.width,
-    height=vc.height,
-    sample_rate=AudioCapture.SAMPLE_RATE,
-    current_fps=30.0)
+        encoder = PyAVEncoder(
+            output_path="output.mp4",
+            width=vc.width,
+            height=vc.height,
+            sample_rate=AudioCapture.SAMPLE_RATE,
+            current_fps=30.0)
 
         
         vc.start()

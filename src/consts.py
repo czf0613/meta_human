@@ -1,0 +1,9 @@
+# 时间基
+VIDEO_TIME_BASE = 1 / 90000
+# 采样率
+SAMPLE_RATE = 16000
+# 每个chunk的持续时间ms
+CHUNK_DURATION = 30
+# 每一个chunk里面包含多少个采样数据
+SAMPLE_COUNT = SAMPLE_RATE // 1000 * CHUNK_DURATION
+VAD_LEVEL = 1
