@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
             try:
                 audio_pack = ac.frame_queue.get(block=False)
-                encoder.write_audio_frame(audio_pack.pcm_chunk)
+                encoder.write_audio_frame(audio_pack.pcm_chunk, audio_pack.pts)
             except queue.Empty:
                 print("no active voice detected")
 
