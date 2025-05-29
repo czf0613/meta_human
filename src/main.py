@@ -10,7 +10,7 @@ import queue
 
 if __name__ == "__main__":
     shutil.rmtree("cache", ignore_errors=True)
-    os.makedirs("cache", exist_ok=True)
+    os.makedirs("cache", exist_ok=True) 
 
     vc: VideoCapture | None = None
     ac: AudioCapture | None = None
@@ -26,24 +26,27 @@ if __name__ == "__main__":
         encoder = PyAVEncoder(
             output_path="output.mp4",
             width=vc.width,
-            height=vc.height,
-            sample_rate=consts.SAMPLE_RATE,
-            current_fps=30.0)
+            height=vc.height)
 
         
         vc.start()
         ac.start()
+        encoder.start()
 
         print(f'{os.linesep}Press "q" to on window stop the video capture.{os.linesep}')
 
         while True:
-            video_pack = vc.frame_queue.get()
-            video_frame, video_pts = video_pack.frame, video_pack.pts
-            encoder.write_video_frame(video_frame, video_pts)
+
+            try:
+                video_pack = vc.frame_queue.get(block=False)
+                encoder.add_frame(video_pack)
+                cv2.imshow("Camera Capture", video_pack.frame)
+            except queue.Empty:
+                pass
 
             try:
                 audio_pack = ac.frame_queue.get(block=False)
-                encoder.write_audio_frame(audio_pack.pcm_chunk, audio_pack.pts)
+                encoder.add_frame(audio_pack)
             except queue.Empty:
                 print("no active voice detected")
 
@@ -57,7 +60,6 @@ if __name__ == "__main__":
             #     2,
             # )
 
-            cv2.imshow("Camera Capture", video_frame)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
 
@@ -73,4 +75,4 @@ if __name__ == "__main__":
             ac.stop()   
 
         if encoder is not None:
-            encoder.close()    
+            encoder.stop()    
