@@ -5,9 +5,6 @@ from fractions import Fraction
 import cv2
 from threading import Thread
 import queue
-from dataclasses import dataclass
-from typing import Optional
-import time
 import consts
 from video_capture import CurrentVideoFrame
 from audio_capture import CurrentAudioFrameChunk
