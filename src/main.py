@@ -24,7 +24,7 @@ if __name__ == "__main__":
         sample_rate = consts.SAMPLE_RATE
 
         encoder = PyAVEncoder(
-            output_path = "output.mp4",
+            output_path = os.path.join("cache", "output.mp4"),
             width = vc.width,
             height = vc.height)
 
