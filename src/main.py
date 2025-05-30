@@ -24,9 +24,9 @@ if __name__ == "__main__":
         sample_rate = consts.SAMPLE_RATE
 
         encoder = PyAVEncoder(
-            output_path="output.mp4",
-            width=vc.width,
-            height=vc.height)
+            output_path = "output.mp4",
+            width = vc.width,
+            height = vc.height)
 
         
         vc.start()
@@ -65,8 +65,10 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:
         pass
+
     except Exception as e:
         print(f"An error occurred: {e}")
+
     finally:
         if vc is not None:
             vc.stop()
