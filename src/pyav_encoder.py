@@ -8,6 +8,7 @@ import queue
 import consts
 from video_capture import CurrentVideoFrame
 from audio_capture import CurrentAudioFrameChunk
+import time
 
 
 class PyAVEncoder(Thread):
@@ -67,6 +68,7 @@ class PyAVEncoder(Thread):
 
     def __encode_audio_frame(self, pcm_chunk: bytes, pts: int):
         """编码音频帧"""
+
         try:
             audio_array = np.frombuffer(pcm_chunk, dtype=np.int16).astype(np.float32) / 32768.0
             audio_frame = av.AudioFrame.from_ndarray(
@@ -74,12 +76,15 @@ class PyAVEncoder(Thread):
                 format="fltp",
                 layout="mono"
             )
+
             audio_frame.pts = pts
             audio_frame.sample_rate = self.audio_stream.rate
             for packet in self.audio_stream.encode(audio_frame):
                 self.container.mux(packet)
+
         except Exception as e:
             print(f"Audio encoding error: {str(e)}")
+            
 
     def add_frame(self, frame: CurrentVideoFrame | CurrentAudioFrameChunk):
         """添加视频帧到队列"""

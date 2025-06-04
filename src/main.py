@@ -8,6 +8,7 @@ import cv2
 import queue
 
 
+
 if __name__ == "__main__":
     shutil.rmtree("cache", ignore_errors=True)
     os.makedirs("cache", exist_ok=True) 
