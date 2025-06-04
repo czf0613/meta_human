@@ -45,12 +45,13 @@ class AudioCapture(Thread):
             )
 
             # 语音活跃检测
+            frame_chunk = CurrentAudioFrameChunk(chunk, max(gen_audio_pts()-consts.SAMPLE_COUNT, 0))
             is_speech = self.vad.is_speech(chunk, consts.SAMPLE_RATE)
             if not is_speech:
                 continue
             try:             
                 self.frame_queue.put(
-                    CurrentAudioFrameChunk(chunk, gen_audio_pts()),
+                    frame_chunk,
                     block=False,
                 )
             except queue.Full:
