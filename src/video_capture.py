@@ -1,76 +1,89 @@
 from threading import Thread
-import cv2
-import time
 from dataclasses import dataclass
+import cv2
 import queue
-from time_utils import gen_video_pts
+import time
+from fractions import Fraction
 
 
 @dataclass
-class CurrentVideoFrame:
+class VideoFrame:
     frame: cv2.typing.MatLike
     pts: int
 
 
 class VideoCapture(Thread):
-    # 这些是成员变量
-    __working: bool
     __cap: cv2.VideoCapture
+    __working: bool
+    __first_frame_ts: float | None
+
+    frame_queue: queue.Queue[VideoFrame]
     width: int
     height: int
-    current_fps: float
-    frame_queue: queue.Queue[CurrentVideoFrame]
 
-    def __calc_fps(last_time: float, current_time: float) -> float:
-        if last_time <= 0 or (current_time - last_time <= 0):
-            return 0.0
-
-        return 1 / (current_time - last_time)
+    VIDEO_TIMEBASE = Fraction(1, 90000)  # 随便给一个就行
+    __INNER_TIME_BASE = 1 / 90000
 
     def __init__(self):
         super().__init__(daemon=True)
 
         self.__cap = cv2.VideoCapture(0)
         if not self.__cap.isOpened():
-            raise Exception("Could not open front camera.")
+            print("Error: Could not open video device.")
+            exit(1)
 
-        self.width = int(self.__cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        self.height = int(self.__cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        self.current_fps = 0.0
-        print(f"Video capture started. Width: {self.width}, Height: {self.height}")
+        # try to get a frame and set width and height
+        test_success, test_frame = self.__cap.read()
+        if not test_success:
+            print("Error: Could not read from video device.")
+            exit(1)
+
+        self.width = test_frame.shape[1]
+        self.height = test_frame.shape[0]
+        print(f"Video Capture initialized: {self.width}x{self.height}")
+
+        self.frame_queue = queue.Queue(maxsize=128)
         self.__working = True
-        self.frame_queue = queue.Queue(maxsize=256)
+        self.__first_frame_ts = None
+
+        self.start()
+
+    def __generate_pts(self) -> int:
+        now = time.time()
+
+        if self.__first_frame_ts is None:
+            self.__first_frame_ts = now
+
+        return int((now - self.__first_frame_ts) / self.__INNER_TIME_BASE)
 
     def run(self):
-        last_time = time.time()
+        while self.__working and not self.frame_queue.is_shutdown:
+            success, frame = self.__cap.read()
+            pts = self.__generate_pts()
 
-        while self.__working:
-            ret, frame = self.__cap.read()
-            if not ret:
-                print("Could not read frame from front camera.")
+            if not success:
+                print("Error: Could not read from video device.")
+                break
+            try:
+                self.frame_queue.put_nowait(VideoFrame(frame=frame, pts=pts))
+            except queue.Full:
+                print("Warning: Video Frame queue is full, dropping frame.")
+                time.sleep(0.5)
+                continue
+            except Exception as e:
+                print(f"Error: {e}")
                 break
 
-            current_time = time.time()
-            self.current_fps = VideoCapture.__calc_fps(last_time, current_time)
-            last_time = current_time
-
-            try:
-                self.frame_queue.put(
-                    CurrentVideoFrame(frame, gen_video_pts()),
-                    block=False,
-                )
-            except queue.Full:
-                print("Frame queue is full, dropping frames.")
-                time.sleep(0.5)
-
     def stop(self):
-        if self.__working:
-            self.__working = False
-            time.sleep(1)
-            print("Stopping video capture...")
+        if not self.__working:
+            return
 
-            self.__cap.release()
-            self.frame_queue.shutdown()
+        print("Stopping video capture...")
+        self.__working = False
+        time.sleep(1)
+
+        self.frame_queue.shutdown()
+        self.__cap.release()
 
     def __del__(self):
         self.stop()

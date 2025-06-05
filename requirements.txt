@@ -1,4 +1,5 @@
 opencv-python
-pyaudio
-webrtcvad
+av
 setuptools
+webrtcvad
+pyaudio
