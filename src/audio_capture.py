@@ -13,6 +13,9 @@ class AudioFrame:
 class VoiceSegment:
     def __init__(self):
         self.vad = webrtcvad.Vad(2)
+        self.sample_rate = 48000
+        self.frame_duration = 20
+        self.frame_size = AudioCapture.__VAD_BATCH_SIZE
         
         self.speech_buffer: List[bytes] = []
         self.silence_frames = 0
@@ -21,8 +24,9 @@ class VoiceSegment:
 
         self.is_speaking = False
         self.segment_start = 0.0
+        
     def process_frame(self, frame: AudioFrame) -> Optional[List[bytes]]:
-        vad_frame = frame[:AudioCapture.__VAD_BATCH_SIZE*2]
+        vad_frame = frame[:self.frame_size*2]
 
         is_speech = self.vad.is_speech(vad_frame, self.sample_rate)
         current_time = time.time()

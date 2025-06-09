@@ -11,12 +11,12 @@ if __name__ == "__main__":
     try:
         while True:
 
-            try:
-                video_pack = vc.frame_queue.get(block=False)
-                # encoder.add_frame(video_pack)
-                cv2.imshow("Camera Capture", video_pack.frame)
-            except queue.Empty:
-                pass
+            # try:
+            #     # video_pack = vc.frame_queue.get(block=False)
+            #     # # encoder.add_frame(video_pack)
+            #     # cv2.imshow("Camera Capture", video_pack.frame)
+            # except queue.Empty:
+            #     pass
 
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
