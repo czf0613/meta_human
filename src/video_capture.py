@@ -46,7 +46,6 @@ class VideoCapture(Thread):
         self.__working = True
         self.__first_frame_ts = None
 
-        self.start()
 
     def __generate_pts(self) -> int:
         now = time.time()
