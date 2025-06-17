@@ -1,4 +1,0 @@
-opencv-python
-pyaudio
-webrtcvad
-setuptools
